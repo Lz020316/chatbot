@@ -1,10 +1,17 @@
-import { gateway } from "@ai-sdk/gateway";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import {
   customProvider,
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
+
+// 使用自定义的AI_BASE_URL和AI_API_KEY创建OpenAI兼容提供商
+const customOpenAIProvider = createOpenAICompatible({
+  name: "custom-openai-provider",
+  baseURL: process.env.AI_BASE_URL || "https://api.openai.com/v1",
+  apiKey: process.env.AI_API_KEY,
+});
 
 export const myProvider = isTestEnvironment
   ? (() => {
@@ -25,12 +32,12 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        "chat-model": gateway.languageModel("xai/grok-2-vision-1212"),
+        "chat-model": customOpenAIProvider("deepseek-ai/DeepSeek-V3.1-Terminus"),
         "chat-model-reasoning": wrapLanguageModel({
-          model: gateway.languageModel("xai/grok-3-mini"),
+          model: customOpenAIProvider("moonshotai/Kimi-K2-Thinking"),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
-        "title-model": gateway.languageModel("xai/grok-2-1212"),
-        "artifact-model": gateway.languageModel("xai/grok-2-1212"),
+        "title-model": customOpenAIProvider("deepseek-ai/DeepSeek-V3.1-Terminus"),
+        "artifact-model": customOpenAIProvider("Qwen/Qwen3-VL-30B-A3B-Instruct"),
       },
     });
