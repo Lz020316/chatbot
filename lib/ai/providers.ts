@@ -32,12 +32,12 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        "chat-model": customOpenAIProvider("deepseek-ai/DeepSeek-V3.1-Terminus"),
+        "chat-model": customOpenAIProvider("stepfun-ai/step3"),
         "chat-model-reasoning": wrapLanguageModel({
-          model: customOpenAIProvider("moonshotai/Kimi-K2-Thinking"),
+          model: customOpenAIProvider("MiniMaxAI/MiniMax-M2"),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
         "title-model": customOpenAIProvider("deepseek-ai/DeepSeek-V3.1-Terminus"),
-        "artifact-model": customOpenAIProvider("Qwen/Qwen3-VL-30B-A3B-Instruct"),
+        "artifact-model": customOpenAIProvider("stepfun-ai/step3"),
       },
     });
