@@ -173,13 +173,14 @@ function PureMultimodalInput({
     formData.append("file", file);
 
     try {
-      const response = await fetch("/api/files/upload", {
+      // 首先尝试使用COS上传
+      const cosResponse = await fetch("/api/files/upload-cos", {
         method: "POST",
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (cosResponse.ok) {
+        const data = await cosResponse.json();
         const { url, pathname, contentType } = data;
 
         return {
@@ -188,10 +189,46 @@ function PureMultimodalInput({
           contentType,
         };
       }
-      const { error } = await response.json();
-      toast.error(error);
-    } catch (_error) {
-      toast.error("Failed to upload file, please try again!");
+      
+      // COS上传失败，回退到Vercel Blob
+      console.log("COS上传失败，回退到Vercel Blob上传");
+      const blobResponse = await fetch("/api/files/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (blobResponse.ok) {
+        const data = await blobResponse.json();
+        const { url, pathname, contentType } = data;
+
+        return {
+          url,
+          name: pathname,
+          contentType,
+        };
+      }
+      
+      let errorMessage = "Failed to upload file";
+      try {
+        const errorData = await blobResponse.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = `Upload failed with status ${blobResponse.status}`;
+      }
+      
+      if (blobResponse.status === 500) {
+        errorMessage += "\n\n可能原因：BLOB_READ_WRITE_TOKEN 环境变量未配置";
+      }
+      
+      toast.error(errorMessage);
+      console.error(`File upload failed: ${errorMessage}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? `Failed to upload file: ${error.message}`
+        : "Failed to upload file, please try again!";
+      
+      toast.error(errorMessage);
+      console.error("File upload error:", error);
     }
   }, []);
 
@@ -431,17 +468,32 @@ function PureAttachmentsButton({
   selectedModelId: string;
 }) {
   const isReasoningModel = selectedModelId === "chat-model-reasoning";
+  const selectedModel = chatModels.find(model => model.id === selectedModelId);
+
+  const handleClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    
+    if (status !== "ready") {
+      toast.error("请等待模型响应完成后再上传文件");
+      return;
+    }
+    
+    if (isReasoningModel) {
+      toast.error(`${selectedModel?.name || "当前模型"} 不支持文件上传功能`);
+      return;
+    }
+    
+    fileInputRef.current?.click();
+  };
 
   return (
     <Button
       className="aspect-square h-8 rounded-lg p-1 transition-colors hover:bg-accent"
       data-testid="attachments-button"
       disabled={status !== "ready" || isReasoningModel}
-      onClick={(event) => {
-        event.preventDefault();
-        fileInputRef.current?.click();
-      }}
+      onClick={handleClick}
       variant="ghost"
+      title={isReasoningModel ? "该模型不支持文件上传" : "上传文件"}
     >
       <PaperclipIcon size={14} style={{ width: 14, height: 14 }} />
     </Button>
