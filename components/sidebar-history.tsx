@@ -23,9 +23,9 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useTranslationSafe } from "@/hooks/use-translation-safe";
 import type { Chat } from "@/lib/db/schema";
 import { fetcher } from "@/lib/utils";
-import { useTranslationSafe } from "@/hooks/use-translation-safe";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
 
@@ -352,7 +352,9 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       <AlertDialog onOpenChange={setShowDeleteDialog} open={showDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("history.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("history.deleteConfirmTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {t("history.deleteConfirmDescription")}
             </AlertDialogDescription>
