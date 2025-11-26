@@ -1,11 +1,11 @@
 import type { ComponentProps } from "react";
-
 import { type SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useTranslationSafe } from "@/hooks/use-translation-safe";
 import { cn } from "@/lib/utils";
 import { SidebarLeftIcon } from "./icons";
 import { Button } from "./ui/button";
@@ -14,6 +14,7 @@ export function SidebarToggle({
   className,
 }: ComponentProps<typeof SidebarTrigger>) {
   const { toggleSidebar } = useSidebar();
+  const { t } = useTranslationSafe();
 
   return (
     <Tooltip>
@@ -27,8 +28,12 @@ export function SidebarToggle({
           <SidebarLeftIcon size={16} />
         </Button>
       </TooltipTrigger>
-      <TooltipContent align="start" className="hidden md:block">
-        Toggle Sidebar
+      <TooltipContent
+        align="start"
+        className="hidden md:block"
+        suppressHydrationWarning
+      >
+        {t("toggleSidebar")}
       </TooltipContent>
     </Tooltip>
   );

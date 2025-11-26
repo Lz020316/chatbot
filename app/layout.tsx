@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import Providers from "./providers";
 
 import "./globals.css";
-import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chat.vercel.ai"),
-  title: "Next.js Chatbot Template",
-  description: "Next.js chatbot template using the AI SDK.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  title: "AI Chatbot",
+  description: "AI-powered chatbot application.",
 };
 
 export const viewport = {
@@ -48,6 +48,13 @@ const THEME_COLOR_SCRIPT = `\
   updateThemeColor();
 })();`;
 
+const LANG_SCRIPT = `\
+(function() {
+  var html = document.documentElement;
+  var savedLang = localStorage.getItem('i18nextLng') || 'en';
+  html.setAttribute('lang', savedLang);
+})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -70,17 +77,15 @@ export default function RootLayout({
             __html: THEME_COLOR_SCRIPT,
           }}
         />
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: "Required"
+          dangerouslySetInnerHTML={{
+            __html: LANG_SCRIPT,
+          }}
+        />
       </head>
       <body className="antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          disableTransitionOnChange
-          enableSystem
-        >
-          <Toaster position="top-center" />
-          <SessionProvider>{children}</SessionProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
