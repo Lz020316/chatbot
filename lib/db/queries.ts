@@ -16,10 +16,13 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
+import type { AgentConfig } from "../ai/agent-config";
 import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
 import { generateUUID } from "../utils";
 import {
+  type Agent,
+  agent,
   type Chat,
   chat,
   type DBMessage,
@@ -80,6 +83,151 @@ export async function createGuestUser() {
   }
 }
 
+export async function createAgentRecord({
+  userId,
+  name,
+  description,
+  sourcePrompt,
+  config,
+  status = "draft",
+}: {
+  userId: string;
+  name: string;
+  description?: string;
+  sourcePrompt?: string;
+  config: AgentConfig;
+  status?: Agent["status"];
+}) {
+  try {
+    const [createdAgent] = await db
+      .insert(agent)
+      .values({
+        userId,
+        name,
+        description,
+        sourcePrompt,
+        config,
+        status,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        publishedAt: status === "published" ? new Date() : null,
+      })
+      .returning();
+
+    return createdAgent;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to create agent");
+  }
+}
+
+export async function updateAgentRecord({
+  id,
+  userId,
+  name,
+  description,
+  sourcePrompt,
+  config,
+  status,
+}: {
+  id: string;
+  userId: string;
+  name?: string;
+  description?: string;
+  sourcePrompt?: string | null;
+  config?: AgentConfig;
+  status?: Agent["status"];
+}) {
+  try {
+    const updateValues: Partial<Agent> = {
+      updatedAt: new Date(),
+    };
+
+    if (name !== undefined) {
+      updateValues.name = name;
+    }
+
+    if (description !== undefined) {
+      updateValues.description = description;
+    }
+
+    if (sourcePrompt !== undefined) {
+      updateValues.sourcePrompt = sourcePrompt;
+    }
+
+    if (config !== undefined) {
+      updateValues.config = config;
+    }
+
+    if (status !== undefined) {
+      updateValues.status = status;
+      updateValues.publishedAt = status === "published" ? new Date() : null;
+    }
+
+    const [updatedAgent] = await db
+      .update(agent)
+      .set(updateValues)
+      .where(and(eq(agent.id, id), eq(agent.userId, userId)))
+      .returning();
+
+    return updatedAgent ?? null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to update agent");
+  }
+}
+
+export async function getAgentsByUserIdSorted({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(agent)
+      .where(eq(agent.userId, userId))
+      .orderBy(desc(agent.updatedAt));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to fetch agents by user id"
+    );
+  }
+}
+
+export async function getAgentByIdSafe({ id }: { id: string }) {
+  try {
+    const [entry] = await db
+      .select()
+      .from(agent)
+      .where(eq(agent.id, id))
+      .limit(1);
+
+    return entry ?? null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to fetch agent");
+  }
+}
+
+export async function publishAgentRecord({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
+  try {
+    const [published] = await db
+      .update(agent)
+      .set({
+        status: "published",
+        publishedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agent.id, id), eq(agent.userId, userId)))
+      .returning();
+
+    return published ?? null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to publish agent");
+  }
+}
+
 export async function saveChat({
   id,
   userId,
@@ -134,7 +282,7 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
       return { deletedCount: 0 };
     }
 
-    const chatIds = userChats.map(c => c.id);
+    const chatIds = userChats.map((c) => c.id);
 
     await db.delete(vote).where(inArray(vote.chatId, chatIds));
     await db.delete(message).where(inArray(message.chatId, chatIds));

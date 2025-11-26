@@ -11,6 +11,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { AgentConfig } from "../ai/agent-config";
 import type { AppUsage } from "../usage";
 
 export const user = pgTable("User", {
@@ -20,6 +21,25 @@ export const user = pgTable("User", {
 });
 
 export type User = InferSelectModel<typeof user>;
+
+export const agent = pgTable("Agent", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  sourcePrompt: text("sourcePrompt"),
+  config: jsonb("config").$type<AgentConfig>(),
+  status: varchar("status", { enum: ["draft", "published"] })
+    .notNull()
+    .default("draft"),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  publishedAt: timestamp("publishedAt"),
+});
+
+export type Agent = InferSelectModel<typeof agent>;
 
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),

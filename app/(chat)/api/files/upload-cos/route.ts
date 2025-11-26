@@ -1,6 +1,6 @@
+import COS from "cos-nodejs-sdk-v5";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import COS from "cos-nodejs-sdk-v5";
 
 import { auth } from "@/app/(auth)/auth";
 
@@ -21,7 +21,7 @@ const COS_CONFIG = {
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
+    .refine((file) => file.size <= 10 * 1024 * 1024, {
       message: "文件大小应小于5MB",
     })
     .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
@@ -41,7 +41,11 @@ export async function POST(request: Request) {
   }
 
   // 检查COS配置
-  if (!COS_CONFIG.Bucket || !process.env.TENCENT_COS_SECRET_ID || !process.env.TENCENT_COS_SECRET_KEY) {
+  if (
+    !COS_CONFIG.Bucket ||
+    !process.env.TENCENT_COS_SECRET_ID ||
+    !process.env.TENCENT_COS_SECRET_KEY
+  ) {
     return NextResponse.json(
       { error: "COS配置不完整，请检查环境变量" },
       { status: 500 }
@@ -70,7 +74,7 @@ export async function POST(request: Request) {
     const filename = (formData.get("file") as File).name;
     const timestamp = Date.now();
     const key = `uploads/${timestamp}_${filename}`;
-    
+
     // 将Blob转换为Buffer
     const fileBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(fileBuffer);
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
       });
 
       // 构建访问URL
-      const url = COS_CONFIG.BaseUrl 
+      const url = COS_CONFIG.BaseUrl
         ? `${COS_CONFIG.BaseUrl}/${key}`
         : `https://${COS_CONFIG.Bucket}.cos.${COS_CONFIG.Region}.myqcloud.com/${key}`;
 
@@ -108,9 +112,6 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error("处理请求错误:", error);
-    return NextResponse.json(
-      { error: "处理请求失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "处理请求失败" }, { status: 500 });
   }
 }
